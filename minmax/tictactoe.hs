@@ -25,29 +25,55 @@ import Sample.MinMax.Game
 --  obits   - positions where O has been played
 ------------------------------------------------------------------------------
 
-data TTT = TTT { swapped :: Swapped, xbits :: Int, obits :: Int } deriving (Generic, Eq)
+data TTT = TTT { swapped :: Swapped, xbits :: Int, obits :: Int } deriving Eq
 
 ------------------------------------------------------------------------------
 --
 ------------------------------------------------------------------------------
 
-data Swapped = No | Yes deriving (Generic, Eq, IDoc)
+data Swapped = No | Yes deriving Eq
 
-instance Zero       Swapped where zero = Yes
+instance Zero       Swapped where zero = No
 instance Invertable Swapped where
   invert No  = Yes
   invert Yes = No
 
 ------------------------------------------------------------------------------
---
+--  Lose n - will lose in n moves
+--  Draw   - will draw
+--  Win  n - will win  in n moves
 ------------------------------------------------------------------------------
 
-data Value = Lose | Draw | Win deriving (Generic, Eq, Ord, IDoc)
+data Value = Lose Int | Draw | Win Int deriving Eq
+
+instance IDoc Value where
+  doc (Lose n) = [docf|Loss in $n moves|]
+  doc (Draw  ) = [docf|Draw|]
+  doc (Win  n) = [docf|Win in $n moves|]
 
 instance Invertable Value where
-  invert Lose = Win
-  invert Draw = Draw
-  invert Win  = Lose
+  invert (Lose n) = Win  n
+  invert (Draw  ) = Draw
+  invert (Win  n) = Lose n
+
+instance Successor Value where
+  succ (Lose n) = Lose (n + 1)
+  succ (Draw  ) = Draw
+  succ (Win  n) = Win  (n + 1)
+
+------------------------------------------------------------------------------
+--  it's better to lose in more  moves
+--  it's better to win  in fewer moves
+------------------------------------------------------------------------------
+
+instance Ord Value where
+  compare (Lose n) (Lose n') = compare n n'
+  compare (Lose n) (_      ) = Less
+  compare (Draw  ) (Lose n') = Greater
+  compare (Draw  ) (Draw   ) = Equal
+  compare (Draw  ) (Win  n') = Less
+  compare (Win  n) (Win  n') = compare n' n
+  compare (Win  n) (_      ) = Greater
 
 ------------------------------------------------------------------------------
 --  !!!! TTT could be parameterized over size with dependent types
@@ -68,7 +94,7 @@ positions :: List Int
 positions = range 0 positionCount
 
 ------------------------------------------------------------------------------
---  each state TTT has a unique Int index
+--  each TTT state has a unique Int index
 --
 --  class Zero - types that have a zero element
 ------------------------------------------------------------------------------
@@ -90,19 +116,33 @@ instance IIndex TTT where
 ------------------------------------------------------------------------------
 
 instance Game TTT Value where
-  moves (TTT swapped xs os) | isWinning size xs = Left Win
-                            | isWinning size os = Left Lose
+  moves (TTT swapped xs os) | isWinning size xs = Left   <| Win  0
+                            | isWinning size os = Left   <| Lose 0
                             | True              = result <| mapMaybe move positions
     where
-      -- the xo and os are swapped after making a move
+      -- the xs and os are swapped after making a move
       -- for the AI the current player is always X
 
-      move position = if testBit position (xs || os) then None else Some <| TTT (invert swapped) (os || bit position) xs
+      move position = if testBit position (xs || os) then None else Some <| TTT (invert swapped) os (xs || bit position)
 
       -- if there are no moves return Draw
 
-      result (Nil      ) = Left Draw
+      result (Nil      ) = Left  <| Draw
       result (Cons x xs) = Right <| NonEmptyList x xs
+
+  printState :: TTT -> Value -> IO ()
+  printState s v =
+    do
+      print s
+      printLine
+      go (swapped s) v
+      printLine
+    where
+      go (_  ) (Draw  ) = [printf|Draw|]
+      go (No ) (Lose n) = [printf|X's turn: O will win in $n moves|]
+      go (No ) (Win  n) = [printf|X's turn: X will win in $n moves|]
+      go (Yes) (Lose n) = [printf|O's turn: X will win in $n moves|]
+      go (Yes) (Win  n) = [printf|O's turn: O will win in $n moves|]
 
 ------------------------------------------------------------------------------
 --  isWinning - is a state winning?
@@ -156,10 +196,5 @@ tttDoc xs os = columnDoc <| intersperse divider <| map lineDoc <| chunk size <| 
 
 test :: IO ()
 test = do
-  [printf|playerBits  = $playerBits|]
-  [printf|playerMask  = $playerMask|]
-  [printf|totalStates = $totalStates|]
-
-  printLine
-
-  play (zero :: TTT)
+  --play (zero :: TTT) - Draw
+  play (TTT No 1 2) -- X wins

@@ -55,8 +55,9 @@ import Core
 --  moves - return a list of legal next states from the input state
 ------------------------------------------------------------------------------
 
-class (Ord v, Invertable v, IIndex s) => Game s v | s -> v where
+class (Ord v, Invertable v, Successor v, IIndex s) => Game s v | s -> v where
   moves :: s -> Moves s v
+  printState :: s -> v -> IO ()
 
 ------------------------------------------------------------------------------
 --  Moves
@@ -75,18 +76,16 @@ play :: forall s v . (IDoc v, IDoc s, Game s v) => s -> IO ()
 play = go
   where
     go s = do
-      print s
-      printLine
-
+      printState s (score s)
       bestMove s |> \case
-        None   -> print <| score s
+        None   -> return ()
         Some s -> go s
 
     bestMove :: s -> Maybe s
     bestMove s =
       case moves s of
         Left  v  -> None
-        Right ss -> Some <| maximumOn score ss
+        Right ss -> Some <| minimumOn score ss
 
     score :: s -> v
     score s = getElement s scores
@@ -106,7 +105,7 @@ play = go
 
           -- this one line is the minmax algorithm
 
-          Right ss -> negate <| maximumOn id <| map score ss
+          Right ss -> succ <| invert <| minimumOn id <| map score ss
 
 ------------------------------------------------------------------------------
 --  this algorithm is tractable for a 4x4 board
