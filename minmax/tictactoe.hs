@@ -4,7 +4,7 @@
 --
 ------------------------------------------------------------------------------
 
-module Samples.MinMax.TicTacToe
+module Sample.MinMax.TicTacToe
   ( test
   ) where
 
@@ -15,8 +15,7 @@ module Samples.MinMax.TicTacToe
 ------------------------------------------------------------------------------
 
 import Core
-import Data.Bits
-import Samples.MinMax.Game
+import Sample.MinMax.Game
 
 ------------------------------------------------------------------------------
 --  TTT - Tac-Tac-Toe Board state
@@ -26,17 +25,18 @@ import Samples.MinMax.Game
 --  obits  - positions where O has been played
 ------------------------------------------------------------------------------
 
-data TTT = TTT { player :: Player, xbits :: Int, obits :: Int } deriving (Eq)
+data TTT = TTT { swapped :: Swapped, xbits :: Int, obits :: Int } deriving (Generic, Eq)
 
 ------------------------------------------------------------------------------
 --
 ------------------------------------------------------------------------------
 
-data Player = X | O deriving (Eq)
+data Swapped = No | Yes deriving (Generic, Eq, IDoc)
 
-instance Negate Player where
-  negate X = O
-  negate O = X
+instance Zero       Swapped where zero = Yes
+instance Invertable Swapped where
+  invert No  = Yes
+  invert Yes = No
 
 ------------------------------------------------------------------------------
 --
@@ -44,10 +44,10 @@ instance Negate Player where
 
 data Value = Lose | Draw | Win deriving (Generic, Eq, Ord, IDoc)
 
-instance Negate Value where
-  negate Lose = Win
-  negate Draw = Draw
-  negate Win  = Lose
+instance Invertable Value where
+  invert Lose = Win
+  invert Draw = Draw
+  invert Win  = Lose
 
 ------------------------------------------------------------------------------
 --  !!!! TTT could be parameterized over size with dependent types
@@ -73,31 +73,31 @@ positions = range 0 positionCount
 --  class Zero - types that have a zero element
 ------------------------------------------------------------------------------
 
-instance Zero    TTT where zero = TTT X 0 0
+instance Zero    TTT where zero = TTT zero zero zero
 instance Bounded TTT where
   minBound = zero
-  maxBound = TTT X playerMask playerMask
+  maxBound = TTT zero playerMask playerMask
 
 instance IIndex TTT where
   toIndex   :: Int -> TTT
   fromIndex :: TTT -> Int
 
-  toIndex   xos           = TTT O (playerMask .&. xos) (playerMask .&. shiftR xos playerBits)
-  fromIndex (TTT b xs os) = xs .|. shiftL os playerBits
+  toIndex   xos           = TTT zero (playerMask && xos) (playerMask && shiftR playerBits xos)
+  fromIndex (TTT s xs os) = xs || shiftL playerBits os
 
 ------------------------------------------------------------------------------
 --  A Tic-Tac-Toe Game
 ------------------------------------------------------------------------------
 
 instance Game TTT Value where
-  moves (TTT b xs os) | isWinning size xs = Left Win
-                      | isWinning size os = Left Lose
-                      | True              = result <| mapMaybe move positions
+  moves (TTT swapped xs os) | isWinning size xs = Left Win
+                            | isWinning size os = Left Lose
+                            | True              = result <| mapMaybe move positions
     where
       -- the xo and os are swapped after making a move
       -- for the AI the current player is always X
 
-      move position = if testBit (xs .|. os) position then None else Some <| TTT (negate b) (os .|. bit position) xs
+      move position = if testBit position (xs || os) then None else Some <| TTT (invert swapped) (os || bit position) xs
 
       -- if there are no moves return Draw
 
@@ -114,56 +114,41 @@ instance Game TTT Value where
 isWinning size = if size == 2 then isWinning2 else isWinning3
 
 isWinning2 :: Int -> Bool
-isWinning2 n | n == f2 b0 b1 = True  -- 11 00
-             | n == f2 b2 b3 = True  -- 00 11
-             | n == f2 b0 b2 = True  -- 10 10
-             | n == f2 b1 b3 = True  -- 01 01
-             | n == f2 b0 b3 = True  -- 10 01
-             | n == f2 b1 b2 = True  -- 01 10
-             | True          = False
+isWinning2 n = isSubset 0b_11_00 n
+            || isSubset 0b_00_11 n
+            || isSubset 0b_10_10 n
+            || isSubset 0b_01_01 n
+            || isSubset 0b_10_01 n
+            || isSubset 0b_01_10 n
 
 isWinning3 :: Int -> Bool
-isWinning3 n | n == f3 b0 b1 b2 = True -- 111 000 000
-             | n == f3 b3 b4 b5 = True -- 000 111 000
-             | n == f3 b6 b7 b8 = True -- 000 000 111
-             | n == f3 b1 b3 b6 = True -- 100 100 100
-             | n == f3 b2 b4 b7 = True -- 010 010 010
-             | n == f3 b3 b5 b8 = True -- 001 001 001
-             | n == f3 b0 b4 b8 = True -- 100 010 001
-             | n == f3 b2 b4 b6 = True -- 001 010 100
-             | True             = False
-
-f2 b0 b1    = b0 .|. b1
-f3 b0 b1 b2 = b0 .|. b1 .|. b2
-
-b0  = (2 :: Int) ^ (0 :: Int)
-b1  = (2 :: Int) ^ (1 :: Int)
-b2  = (2 :: Int) ^ (2 :: Int)
-b3  = (2 :: Int) ^ (3 :: Int)
-b4  = (2 :: Int) ^ (4 :: Int)
-b5  = (2 :: Int) ^ (5 :: Int)
-b6  = (2 :: Int) ^ (6 :: Int)
-b7  = (2 :: Int) ^ (7 :: Int)
-b8  = (2 :: Int) ^ (8 :: Int)
+isWinning3 n =  isSubset 0b_111_000_000 n
+             || isSubset 0b_000_111_000 n
+             || isSubset 0b_000_000_111 n
+             || isSubset 0b_100_100_100 n
+             || isSubset 0b_010_010_010 n
+             || isSubset 0b_001_001_001 n
+             || isSubset 0b_100_010_001 n
+             || isSubset 0b_001_010_100 n
 
 ------------------------------------------------------------------------------
 --  turn TTT into a printable document
 ------------------------------------------------------------------------------
 
 instance IDoc TTT where
-  doc (TTT O xs os) = tttDoc xs os
-  doc (TTT X xs os) = tttDoc os xs
+  doc (TTT No  xs os) = tttDoc xs os
+  doc (TTT Yes xs os) = tttDoc os xs
 
 tttDoc xs os = columnDoc <| intersperse divider <| map lineDoc <| chunk size <| fmap xoDoc positions
   where
-    xoDoc position | testBit xs position = doc " X "
-                   | testBit os position = doc " O "
-                   | True                = doc "   "
+    xoDoc position | testBit position xs = [docf| X |]
+                   | testBit position os = [docf| O |]
+                   | True                = [docf|   |]
 
     lineDoc :: List Doc -> Doc
-    lineDoc = sepWithDoc (doc "|") << map doc
+    lineDoc = sepWithDoc [docf|||] << map doc
 
-    divider = sepWithDoc (doc "+") <| replicate size <| doc "---"
+    divider = sepWithDoc [docf|+|] <| replicate size [docf|---|]
 
 ------------------------------------------------------------------------------
 --
@@ -174,6 +159,7 @@ test = do
   [printf|playerBits  = $playerBits|]
   [printf|playerMask  = $playerMask|]
   [printf|totalStates = $totalStates|]
-  print ""
 
-  play (zero @TTT)
+  printLine
+
+  play (zero :: TTT)

@@ -6,7 +6,7 @@
 --
 ------------------------------------------------------------------------------
 
-module Samples.MinMax.Game
+module Sample.MinMax.Game
   ( Game(..), Moves, play
   ) where
 
@@ -55,7 +55,7 @@ import Core
 --  moves - return a list of legal next states from the input state
 ------------------------------------------------------------------------------
 
-class (Ord v, Negate v, IIndex s) => Game s v | s -> v where
+class (Ord v, Invertable v, IIndex s) => Game s v | s -> v where
   moves :: s -> Moves s v
 
 ------------------------------------------------------------------------------
@@ -75,14 +75,15 @@ type Moves s v = Either v (NonEmptyList s)
 --           this wouldn't be too hard to fix
 ------------------------------------------------------------------------------
 
-play :: forall s v . (IDoc s, Game s v) => s -> IO ()
+play :: forall s v . (IDoc v, IDoc s, Game s v) => s -> IO ()
 play = go
   where
     go s = do
       print s
-      print ""
+      printLine
+
       bestMove s |> \case
-        None   -> return ()
+        None   -> print <| score s
         Some s -> go s
 
     bestMove :: s -> Maybe s
@@ -109,7 +110,7 @@ play = go
 
           -- this one line is the minmax algorithm
 
-          Right ss -> negate <| minimumOn id <| map score ss
+          Right ss -> negate <| maximumOn id <| map score ss
 
 ------------------------------------------------------------------------------
 --  this algorithm is tractable for a 4x4 board
