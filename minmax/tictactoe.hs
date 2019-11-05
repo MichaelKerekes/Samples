@@ -39,37 +39,37 @@ instance Invertable Swapped where
   invert Yes = No
 
 ------------------------------------------------------------------------------
---  Lose n - will lose in n moves
+--  Loss n - will lose in n moves
 --  Draw   - will draw
 --  Win  n - will win  in n moves
 ------------------------------------------------------------------------------
 
-data Value = Lose Int | Draw | Win Int deriving Eq
+data Value = Loss Int | Draw | Win Int deriving Eq
 
 instance IDoc Value where
-  doc (Lose n) = [docf|Loss in $n moves|]
+  doc (Loss n) = [docf|Loss in $n moves|]
   doc (Draw  ) = [docf|Draw|]
   doc (Win  n) = [docf|Win in $n moves|]
 
 instance Invertable Value where
-  invert (Lose n) = Win  n
+  invert (Loss n) = Win  n
   invert (Draw  ) = Draw
-  invert (Win  n) = Lose n
+  invert (Win  n) = Loss n
 
 instance Successor Value where
-  succ (Lose n) = Lose (n + 1)
+  succ (Loss n) = Loss (n + 1)
   succ (Draw  ) = Draw
   succ (Win  n) = Win  (n + 1)
 
 ------------------------------------------------------------------------------
---  it's better to lose in more  moves
+--  it's better to loes in more  moves
 --  it's better to win  in fewer moves
 ------------------------------------------------------------------------------
 
 instance Ord Value where
-  compare (Lose n) (Lose n') = compare n n'
-  compare (Lose n) (_      ) = Less
-  compare (Draw  ) (Lose n') = Greater
+  compare (Loss n) (Loss n') = compare n n'
+  compare (Loss n) (_      ) = Less
+  compare (Draw  ) (Loss n') = Greater
   compare (Draw  ) (Draw   ) = Equal
   compare (Draw  ) (Win  n') = Less
   compare (Win  n) (Win  n') = compare n' n
@@ -117,7 +117,7 @@ instance IIndex TTT where
 
 instance Game TTT Value where
   moves (TTT swapped xs os) | isWinning size xs = Left   <| Win  0
-                            | isWinning size os = Left   <| Lose 0
+                            | isWinning size os = Left   <| Loss 0
                             | True              = result <| mapMaybe move positions
     where
       -- the xs and os are swapped after making a move
@@ -139,9 +139,9 @@ instance Game TTT Value where
       printLine
     where
       go (_  ) (Draw  ) = [printf|Draw|]
-      go (No ) (Lose n) = [printf|X's turn: O will win in $n moves|]
+      go (No ) (Loss n) = [printf|X's turn: O will win in $n moves|]
       go (No ) (Win  n) = [printf|X's turn: X will win in $n moves|]
-      go (Yes) (Lose n) = [printf|O's turn: X will win in $n moves|]
+      go (Yes) (Loss n) = [printf|O's turn: X will win in $n moves|]
       go (Yes) (Win  n) = [printf|O's turn: O will win in $n moves|]
 
 ------------------------------------------------------------------------------
