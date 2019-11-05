@@ -20,9 +20,9 @@ import Sample.MinMax.Game
 ------------------------------------------------------------------------------
 --  TTT - Tac-Tac-Toe Board state
 --
---  player - keep track of current player. (only used to print TTT correctly)
---  xbits  - positions where X has been played (stored as bits in an Int)
---  obits  - positions where O has been played
+--  swapped - Yes if the xs and os are swapped (only used to print TTT correctly)
+--  xbits   - positions where X has been played (stored as bits in an Int)
+--  obits   - positions where O has been played
 ------------------------------------------------------------------------------
 
 data TTT = TTT { swapped :: Swapped, xbits :: Int, obits :: Int } deriving (Generic, Eq)

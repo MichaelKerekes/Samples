@@ -69,10 +69,6 @@ type Moves s v = Either v (NonEmptyList s)
 
 ------------------------------------------------------------------------------
 --  play - The AI plays through a game given some initial state
---
---  caveat - play stops playing as soon as it reaches a state from which it is guaranteed to win
---           this is an issue with 'play' not the algorithm used
---           this wouldn't be too hard to fix
 ------------------------------------------------------------------------------
 
 play :: forall s v . (IDoc v, IDoc s, Game s v) => s -> IO ()
