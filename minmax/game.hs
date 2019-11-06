@@ -57,7 +57,7 @@ import Core
 
 class (Ord v, Invertable v, Successor v, IIndex s) => Game s v | s -> v where
   moves :: s -> Moves s v
-  printState :: s -> v -> IO ()
+  printState :: MonadIO m => s -> v -> m ()
 
 ------------------------------------------------------------------------------
 --  Moves
@@ -72,7 +72,7 @@ type Moves s v = Either v (NonEmptyList s)
 --  play - The AI plays through a game given some initial state
 ------------------------------------------------------------------------------
 
-play :: forall s v . (IDoc v, IDoc s, Game s v) => s -> IO ()
+play :: forall m s v . (MonadIO m, Game s v) => s -> m ()
 play = go
   where
     go s = do

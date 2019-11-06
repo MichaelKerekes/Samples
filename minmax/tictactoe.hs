@@ -130,7 +130,6 @@ instance Game TTT Value where
       result (Nil      ) = Left  <| Draw
       result (Cons x xs) = Right <| NonEmptyList x xs
 
-  printState :: TTT -> Value -> IO ()
   printState s v =
     do
       print s
@@ -195,6 +194,6 @@ tttDoc xs os = columnDoc <| intersperse divider <| map lineDoc <| chunk size <| 
 ------------------------------------------------------------------------------
 
 test :: IO ()
-test = do
-  --play (zero :: TTT) - Draw
-  play (TTT No 1 2) -- X wins
+test = runProfile <| timeM "choose" do
+  play (zero :: TTT) -- Draw
+  --play (TTT No 1 2) -- X wins
