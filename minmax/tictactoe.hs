@@ -76,8 +76,8 @@ instance Ord Value where
   compare (Win  n) (_      ) = Greater
 
 ------------------------------------------------------------------------------
---  !!!! TTT could be parameterized over size with dependent types
---       but instead just use the global constant 'size'
+--  !!! TTT could be parameterized over size with dependent types
+--      but instead just use the global constant 'size'
 ------------------------------------------------------------------------------
 
 size          :: Int = 3
@@ -185,9 +185,9 @@ tttDoc xs os = columnDoc <| intersperse divider <| map lineDoc <| chunk size <| 
                    | True                = [docf|   |]
 
     lineDoc :: List Doc -> Doc
-    lineDoc = sepWithDoc [docf|||] << map doc
+    lineDoc = sepWithIDoc [docf|||] << map doc
 
-    divider = sepWithDoc [docf|+|] <| replicate size [docf|---|]
+    divider = sepWithIDoc [docf|+|] <| replicate size [docf|---|]
 
 ------------------------------------------------------------------------------
 --
