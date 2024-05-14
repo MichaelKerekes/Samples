@@ -1,0 +1,50 @@
+import Core
+import Core.Data.ZipList
+
+levels : List Int
+levels = [ 0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1 ]
+
+main : IO => ()
+main = do
+  print "trapScanL       = $(trap  levels)"
+  print "trapRecursive   = $(trapR levels)"
+  print "trapApplicative = $(trapA levels)"
+
+------------------------------------------------------------------------------
+--  scanl
+------------------------------------------------------------------------------
+
+trap : List Int -> Int
+trap levels = sum water
+  where
+    water    = map (max 0) <| zipWith (-) surface levels
+    surface  = zipWith min maxLeft maxRight
+    maxLeft  = scanl max 0 levels
+    maxRight = drop 1 <| reverse <| scanl max 0 <| reverse levels
+
+------------------------------------------------------------------------------
+--  Applicative
+------------------------------------------------------------------------------
+
+trapA : List Int -> Int
+trapA levels = sum water
+  where
+    water    = max 0 (min !maxLeft !maxRight - !(ZL levels))
+    maxLeft  = ZL <| scanl max 0 levels
+    maxRight = ZL <| drop 1 <| reverse <| scanl max 0 <| reverse levels
+
+------------------------------------------------------------------------------
+--  inline scanl
+------------------------------------------------------------------------------
+
+trapR : List Int -> Int
+trapR = go 0 0
+  where
+    go : Int -> Int -> List Int -> Int
+    go total maxLeft = \case
+      Nil       -> total
+      Cons x xs -> go (total + water) (max x maxLeft) xs
+        where
+          water    = max 0 (surface - x)
+          surface  = min maxLeft maxRight
+          maxRight = foldr max xs 0
